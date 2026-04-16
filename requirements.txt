@@ -1,0 +1,11 @@
+pandas
+openpyxl
+geopandas
+shapely
+networkx
+scikit-learn
+xgboost
+minisom
+matplotlib
+numpy
+scipy

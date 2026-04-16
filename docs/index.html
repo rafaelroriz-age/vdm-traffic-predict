@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VMD Goiás - Estimativa de Volume Médio Diário</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header id="header">
+        <div class="header-left">
+            <span class="material-icons-outlined header-icon">route</span>
+            <div>
+                <h1>VMD Goiás</h1>
+                <p class="subtitle">Estimativa de Volume Médio Diário de Tráfego</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="stat-chip">
+                <span class="material-icons-outlined">straighten</span>
+                <span id="stat-total-km">--</span> km
+            </div>
+            <div class="stat-chip">
+                <span class="material-icons-outlined">visibility</span>
+                <span id="stat-observed">--</span> observados
+            </div>
+            <div class="stat-chip accent">
+                <span class="material-icons-outlined">auto_awesome</span>
+                <span id="stat-predicted">--</span> estimados
+            </div>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <div id="main">
+        <!-- Sidebar -->
+        <aside id="sidebar">
+            <!-- Tab Navigation -->
+            <div class="sidebar-tabs">
+                <button class="tab-btn active" data-tab="layers">
+                    <span class="material-icons-outlined">layers</span>
+                    <span>Camadas</span>
+                </button>
+                <button class="tab-btn" data-tab="analysis">
+                    <span class="material-icons-outlined">analytics</span>
+                    <span>Análise</span>
+                </button>
+                <button class="tab-btn" data-tab="models">
+                    <span class="material-icons-outlined">model_training</span>
+                    <span>Modelos</span>
+                </button>
+                <button class="tab-btn" data-tab="search">
+                    <span class="material-icons-outlined">search</span>
+                    <span>Busca</span>
+                </button>
+            </div>
+
+            <!-- Layers Panel -->
+            <div class="tab-panel active" id="panel-layers">
+                <h3>Camadas do Mapa</h3>
+                <div class="layer-group">
+                    <label class="layer-toggle">
+                        <input type="checkbox" id="layer-segments" checked>
+                        <span class="toggle-slider"></span>
+                        <span class="layer-label">Segmentos VMD</span>
+                    </label>
+                    <label class="layer-toggle">
+                        <input type="checkbox" id="layer-points" checked>
+                        <span class="toggle-slider"></span>
+                        <span class="layer-label">Pontos de Contagem</span>
+                    </label>
+                    <label class="layer-toggle">
+                        <input type="checkbox" id="layer-confidence">
+                        <span class="toggle-slider"></span>
+                        <span class="layer-label">Confiança da Predição</span>
+                    </label>
+                </div>
+
+                <h3>Filtros</h3>
+                <div class="filter-group">
+                    <label>Fonte do VMD</label>
+                    <select id="filter-source">
+                        <option value="all">Todos</option>
+                        <option value="observed">Somente Observados</option>
+                        <option value="predicted">Somente Estimados</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Faixa de VMD</label>
+                    <div class="range-inputs">
+                        <input type="number" id="filter-vmd-min" placeholder="Min" value="0">
+                        <span>—</span>
+                        <input type="number" id="filter-vmd-max" placeholder="Max" value="50000">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Regional</label>
+                    <select id="filter-regional">
+                        <option value="all">Todas</option>
+                    </select>
+                </div>
+                <button class="btn-apply" id="btn-apply-filter">Aplicar Filtros</button>
+            </div>
+
+            <!-- Analysis Panel -->
+            <div class="tab-panel" id="panel-analysis">
+                <h3>Distribuição do VMD</h3>
+                <canvas id="chart-vmd-dist" height="200"></canvas>
+
+                <h3>VMD por Regional</h3>
+                <canvas id="chart-regional" height="250"></canvas>
+
+                <h3>Composição Veicular</h3>
+                <canvas id="chart-vehicle" height="200"></canvas>
+            </div>
+
+            <!-- Models Panel -->
+            <div class="tab-panel" id="panel-models">
+                <h3>Comparação de Modelos</h3>
+                <canvas id="chart-models-r2" height="200"></canvas>
+
+                <h3>RMSE por Modelo</h3>
+                <canvas id="chart-models-rmse" height="200"></canvas>
+
+                <h3>Importância das Features</h3>
+                <canvas id="chart-features" height="300"></canvas>
+
+                <div id="model-details" class="model-info-card">
+                    <h4>Melhor Modelo</h4>
+                    <p id="best-model-name">--</p>
+                    <div class="metric-grid">
+                        <div class="metric">
+                            <span class="metric-value" id="best-r2">--</span>
+                            <span class="metric-label">R²</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-value" id="best-rmse">--</span>
+                            <span class="metric-label">RMSE</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-value" id="best-mae">--</span>
+                            <span class="metric-label">MAE</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-value" id="best-mape">--</span>
+                            <span class="metric-label">MAPE %</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Panel -->
+            <div class="tab-panel" id="panel-search">
+                <h3>Buscar Segmento</h3>
+                <div class="search-box">
+                    <span class="material-icons-outlined">search</span>
+                    <input type="text" id="search-input" placeholder="SRE, GO ou Regional...">
+                </div>
+                <div id="search-results" class="search-results"></div>
+            </div>
+        </aside>
+
+        <!-- Map Container -->
+        <div id="map-container">
+            <div id="map"></div>
+            <!-- Legend -->
+            <div id="legend">
+                <h4>VMD (veíc/dia)</h4>
+                <div class="legend-items" id="legend-items"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Panel (slide-up on segment click) -->
+    <div id="detail-panel" class="hidden">
+        <button id="close-detail" class="close-btn">
+            <span class="material-icons-outlined">close</span>
+        </button>
+        <div id="detail-content"></div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Carregando dados...</p>
+    </div>
+
+    <script src="js/legend.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/sidebar.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
