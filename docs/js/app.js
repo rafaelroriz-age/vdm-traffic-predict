@@ -1,121 +1,93 @@
 /**
- * App module - main controller, data loading, and initialization.
+ * App module — data loading, initialization, orchestration.
  */
-(async function () {
+(async function() {
     'use strict';
 
-    const loading = document.getElementById('loading');
+    var loading = document.getElementById('loading');
 
     function showError(msg) {
-        loading.innerHTML = '<p style="color:#ef4444;padding:20px;">' + msg + '</p>';
+        loading.innerHTML = '<p style="color:#ef4444;padding:20px;max-width:600px;">' + msg + '</p>';
         console.error(msg);
     }
 
     try {
-        // Init map and sidebar
-        console.log('[App] Initializing map...');
+        console.log('[App] Initializing...');
         initMap();
-        initSidebar();
-        renderLegend();
 
-        // Determine base path for data files
-        const basePath = 'data/';
-        console.log('[App] Loading data from:', basePath);
+        var basePath = 'data/';
 
-        // Load data in parallel
-        const [segmentsRes, pointsRes, metricsRes] = await Promise.all([
+        // Load all data files in parallel
+        var responses = await Promise.all([
             fetch(basePath + 'segments.geojson'),
             fetch(basePath + 'count_points.geojson'),
-            fetch(basePath + 'model_metrics.json')
+            fetch(basePath + 'network_graph.json'),
+            fetch(basePath + 'propagation_frames.json'),
+            fetch(basePath + 'gravity_model.json'),
+            fetch(basePath + 'calibration_report.json')
         ]);
 
-        if (!segmentsRes.ok) throw new Error('Failed to load segments.geojson: ' + segmentsRes.status);
-        if (!pointsRes.ok) throw new Error('Failed to load count_points.geojson: ' + pointsRes.status);
-        if (!metricsRes.ok) throw new Error('Failed to load model_metrics.json: ' + metricsRes.status);
+        var names = ['segments.geojson', 'count_points.geojson', 'network_graph.json',
+                     'propagation_frames.json', 'gravity_model.json', 'calibration_report.json'];
+        for (var i = 0; i < responses.length; i++) {
+            if (!responses[i].ok) throw new Error('Falha ao carregar ' + names[i] + ': ' + responses[i].status);
+        }
 
-        const segments = await segmentsRes.json();
-        const points = await pointsRes.json();
-        const metrics = await metricsRes.json();
+        var segments = await responses[0].json();
+        var points = await responses[1].json();
+        var network = await responses[2].json();
+        var frames = await responses[3].json();
+        var gravity = await responses[4].json();
+        var calibration = await responses[5].json();
 
-        console.log('[App] Loaded segments:', segments.features.length);
-        console.log('[App] Loaded points:', points.features.length);
+        console.log('[App] Loaded: ' + segments.features.length + ' segments, ' +
+            points.features.length + ' points, ' + network.nodes.length + ' nodes, ' +
+            frames.length + ' frames, ' + gravity.zones.length + ' zones');
 
         // Store globally for search
         window.segmentsData = segments;
 
-        // Update header stats
-        let totalKm = 0, observed = 0, predicted = 0;
-        segments.features.forEach(function(f) {
-            totalKm += f.properties.extensao || 0;
-            if (f.properties.vmd_source === 'observed') observed++;
-            else predicted++;
-        });
-        document.getElementById('stat-total-km').textContent = Math.round(totalKm).toLocaleString('pt-BR');
-        document.getElementById('stat-observed').textContent = observed.toLocaleString('pt-BR');
-        document.getElementById('stat-predicted').textContent = predicted.toLocaleString('pt-BR');
+        // Bundle all data
+        var data = {
+            segments: segments,
+            points: points,
+            network: network,
+            frames: frames,
+            gravity: gravity,
+            calibration: calibration
+        };
 
-        // Render map layers
-        console.log('[App] Adding segments layer...');
-        addSegmentsLayer(segments);
+        // Initialize sidebar (tab switching, controls, etc.)
+        initSidebar(data);
 
-        console.log('[App] Adding points layer...');
-        addPointsLayer(points);
+        // Render stats for all tabs
+        renderStats(data);
 
-        var confLayer = addConfidenceLayer(segments);
-
-        // Fit bounds to data
-        if (segmentsLayer) {
-            var bounds = segmentsLayer.getBounds();
-            if (bounds.isValid()) {
-                map.fitBounds(bounds, { padding: [20, 20] });
-                console.log('[App] Map fitted to bounds:', bounds.toBBoxString());
-            }
-        }
-
-        // Render charts
-        console.log('[App] Rendering charts...');
-        renderVMDDistribution(segments);
-        renderRegionalChart(segments);
+        // Render all charts
+        renderClassKmChart(segments);
+        renderSurfaceChart(segments);
+        renderCoverageChart(segments);
+        renderVMDDistribution(segments, 'vmd-dist');
         renderVehicleChart(segments);
-        renderModelR2Chart(metrics);
-        renderModelRMSEChart(metrics);
-        renderFeatureImportance(metrics);
-        updateModelDetails(metrics);
+        renderPropagationChart(frames);
+        renderZoneTypeChart(gravity.zones);
+        renderDesireLinesTable(gravity.desire_lines);
+        renderVCDistChart(segments);
+        renderSourcePieChart(segments);
+        renderScatterChart(calibration.scatter_data);
+        renderGEHChart(calibration.scatter_data);
+        renderVMDDistribution(segments, 'resultado-dist');
+        renderRegionalChart(segments);
 
         // Populate filters
-        populateRegionalFilter(segments);
+        populateFilters(segments);
 
-        // Layer toggles
-        document.getElementById('layer-segments').addEventListener('change', function(e) {
-            if (e.target.checked) segmentsLayer.addTo(map);
-            else map.removeLayer(segmentsLayer);
-        });
-
-        document.getElementById('layer-points').addEventListener('change', function(e) {
-            if (e.target.checked) pointsLayer.addTo(map);
-            else map.removeLayer(pointsLayer);
-        });
-
-        document.getElementById('layer-confidence').addEventListener('change', function(e) {
-            if (e.target.checked) {
-                confLayer.addTo(map);
-                if (segmentsLayer) map.removeLayer(segmentsLayer);
-                document.getElementById('layer-segments').checked = false;
-            } else {
-                map.removeLayer(confLayer);
-                segmentsLayer.addTo(map);
-                document.getElementById('layer-segments').checked = true;
-            }
-        });
-
-        // Filter apply
-        document.getElementById('btn-apply-filter').addEventListener('click', function() {
-            var filter = getFilterState();
-            filterSegments(segments, filter);
-        });
+        // Show initial view (Tab 1: Rede)
+        showRedeView(segments);
+        fitToSegments(segments);
 
         // Hide loading
-        console.log('[App] Done! Hiding loader.');
+        console.log('[App] Ready!');
         loading.classList.add('hidden');
         setTimeout(function() { loading.style.display = 'none'; }, 300);
 

@@ -4,18 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VMD Goiás - Estimativa de Volume Médio Diário</title>
-
-    <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
-
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -25,174 +18,169 @@
             <span class="material-icons-outlined header-icon">route</span>
             <div>
                 <h1>VMD Goiás</h1>
-                <p class="subtitle">Estimativa de Volume Médio Diário de Tráfego</p>
+                <p class="subtitle">Estimativa de Volume Médio Diário &mdash; Abordagem por Rede</p>
             </div>
         </div>
         <div class="header-right">
-            <div class="stat-chip">
-                <span class="material-icons-outlined">straighten</span>
-                <span id="stat-total-km">--</span> km
-            </div>
-            <div class="stat-chip">
-                <span class="material-icons-outlined">visibility</span>
-                <span id="stat-observed">--</span> observados
-            </div>
-            <div class="stat-chip accent">
-                <span class="material-icons-outlined">auto_awesome</span>
-                <span id="stat-predicted">--</span> estimados
-            </div>
+            <div class="stat-chip"><span class="material-icons-outlined">straighten</span><span id="stat-total-km">--</span> km</div>
+            <div class="stat-chip"><span class="material-icons-outlined">visibility</span><span id="stat-observed">--</span> obs</div>
+            <div class="stat-chip accent"><span class="material-icons-outlined">auto_awesome</span><span id="stat-estimated">--</span> est</div>
         </div>
     </header>
 
-    <!-- Main content -->
+    <!-- Step Tab Bar -->
+    <nav id="step-bar">
+        <button class="step-btn active" data-tab="rede">
+            <span class="step-num">1</span><span class="step-label">Rede Viária</span>
+        </button>
+        <button class="step-btn" data-tab="contagens">
+            <span class="step-num">2</span><span class="step-label">Contagens</span>
+        </button>
+        <button class="step-btn" data-tab="propagacao">
+            <span class="step-num">3</span><span class="step-label">Propagação</span>
+        </button>
+        <button class="step-btn" data-tab="gravitacional">
+            <span class="step-num">4</span><span class="step-label">Gravitacional</span>
+        </button>
+        <button class="step-btn" data-tab="alocacao">
+            <span class="step-num">5</span><span class="step-label">Alocação</span>
+        </button>
+        <button class="step-btn" data-tab="calibracao">
+            <span class="step-num">6</span><span class="step-label">Calibração</span>
+        </button>
+        <button class="step-btn" data-tab="resultado">
+            <span class="step-num">7</span><span class="step-label">Resultado</span>
+        </button>
+    </nav>
+
+    <!-- Main -->
     <div id="main">
         <!-- Sidebar -->
         <aside id="sidebar">
-            <!-- Tab Navigation -->
-            <div class="sidebar-tabs">
-                <button class="tab-btn active" data-tab="layers">
-                    <span class="material-icons-outlined">layers</span>
-                    <span>Camadas</span>
-                </button>
-                <button class="tab-btn" data-tab="analysis">
-                    <span class="material-icons-outlined">analytics</span>
-                    <span>Análise</span>
-                </button>
-                <button class="tab-btn" data-tab="models">
-                    <span class="material-icons-outlined">model_training</span>
-                    <span>Modelos</span>
-                </button>
-                <button class="tab-btn" data-tab="search">
-                    <span class="material-icons-outlined">search</span>
-                    <span>Busca</span>
-                </button>
+
+            <!-- 1. Rede Viária -->
+            <div class="tab-panel active" id="panel-rede">
+                <div class="panel-intro">A malha rodoviária estadual de Goiás, modelada como multigrafo direcionado com conservação de fluxo nos nós.</div>
+                <div class="stats-grid" id="stats-rede"></div>
+                <h3>Extensão por Classe</h3>
+                <canvas id="chart-class-km" height="200"></canvas>
+                <h3>Tipo de Revestimento</h3>
+                <canvas id="chart-surface" height="160"></canvas>
             </div>
 
-            <!-- Layers Panel -->
-            <div class="tab-panel active" id="panel-layers">
-                <h3>Camadas do Mapa</h3>
-                <div class="layer-group">
-                    <label class="layer-toggle">
-                        <input type="checkbox" id="layer-segments" checked>
-                        <span class="toggle-slider"></span>
-                        <span class="layer-label">Segmentos VMD</span>
-                    </label>
-                    <label class="layer-toggle">
-                        <input type="checkbox" id="layer-points" checked>
-                        <span class="toggle-slider"></span>
-                        <span class="layer-label">Pontos de Contagem</span>
-                    </label>
-                    <label class="layer-toggle">
-                        <input type="checkbox" id="layer-confidence">
-                        <span class="toggle-slider"></span>
-                        <span class="layer-label">Confiança da Predição</span>
-                    </label>
-                </div>
+            <!-- 2. Contagens -->
+            <div class="tab-panel" id="panel-contagens">
+                <div class="panel-intro">Postos de contagem do DNIT/AGETOP registram o VMD em parte da malha. Estes são os dados de referência.</div>
+                <div class="stats-grid" id="stats-contagens"></div>
+                <h3>Cobertura</h3>
+                <canvas id="chart-coverage" height="160"></canvas>
+                <h3>Distribuição do VMD</h3>
+                <canvas id="chart-vmd-dist" height="180"></canvas>
+                <h3>Composição Veicular</h3>
+                <canvas id="chart-vehicle" height="160"></canvas>
+            </div>
 
+            <!-- 3. Propagação -->
+            <div class="tab-panel" id="panel-propagacao">
+                <div class="panel-intro">Conservação de fluxo: em cada nó, fluxo de entrada ≈ fluxo de saída. Propagação iterativa em 3 passes com limiar decrescente.</div>
+                <div class="anim-controls">
+                    <button id="btn-play" class="btn-icon" title="Play"><span class="material-icons-outlined">play_arrow</span></button>
+                    <button id="btn-pause" class="btn-icon" title="Pause"><span class="material-icons-outlined">pause</span></button>
+                    <button id="btn-reset" class="btn-icon" title="Reset"><span class="material-icons-outlined">replay</span></button>
+                    <input type="range" id="anim-slider" min="0" max="19" value="0" class="anim-slider">
+                </div>
+                <div id="anim-status" class="anim-status">Iteração 0 &mdash; Cobertura: 28.5%</div>
+                <div class="progress-bar"><div id="anim-progress" class="progress-fill" style="width:28.5%"></div></div>
+                <div class="stats-grid" id="stats-propagacao"></div>
+                <h3>Progresso da Cobertura</h3>
+                <canvas id="chart-propagation" height="180"></canvas>
+            </div>
+
+            <!-- 4. Gravitacional -->
+            <div class="tab-panel" id="panel-gravitacional">
+                <div class="panel-intro">Modelo gravitacional: T<sub>ij</sub> = P<sub>i</sub> &times; A<sub>j</sub> &times; f(c<sub>ij</sub>). Zonas identificadas por importância (grau, urbanização, rodovias federais).</div>
+                <div class="stats-grid" id="stats-gravitacional"></div>
+                <h3>Top Linhas de Desejo</h3>
+                <div id="desire-lines-table" class="mini-table"></div>
+                <h3>Tipo de Zona</h3>
+                <canvas id="chart-zone-type" height="160"></canvas>
+            </div>
+
+            <!-- 5. Alocação -->
+            <div class="tab-panel" id="panel-alocacao">
+                <div class="panel-intro">Algoritmo Frank-Wolfe (MSA) aloca viagens OD nas rotas de menor custo BPR: t = t<sub>0</sub>(1 + 0.15(V/C)<sup>4</sup>).</div>
+                <div class="stats-grid" id="stats-alocacao"></div>
+                <h3>Distribuição V/C</h3>
+                <canvas id="chart-vc-dist" height="180"></canvas>
+                <h3>Fonte do VMD</h3>
+                <canvas id="chart-source-pie" height="160"></canvas>
+            </div>
+
+            <!-- 6. Calibração -->
+            <div class="tab-panel" id="panel-calibracao">
+                <div class="panel-intro">Validação contra contagens observadas. Métricas de qualidade da estimativa.</div>
+                <div class="stats-grid" id="stats-calibracao"></div>
+                <h3>Observado vs Estimado</h3>
+                <canvas id="chart-scatter" height="220"></canvas>
+                <h3>Distribuição GEH</h3>
+                <canvas id="chart-geh" height="160"></canvas>
+            </div>
+
+            <!-- 7. Resultado -->
+            <div class="tab-panel" id="panel-resultado">
+                <div class="panel-intro">VMD estimado para todos os segmentos da malha rodoviária de Goiás.</div>
                 <h3>Filtros</h3>
                 <div class="filter-group">
                     <label>Fonte do VMD</label>
                     <select id="filter-source">
                         <option value="all">Todos</option>
-                        <option value="observed">Somente Observados</option>
-                        <option value="predicted">Somente Estimados</option>
+                        <option value="observed">Observado</option>
+                        <option value="propagated">Propagado</option>
+                        <option value="assigned">Alocado</option>
+                        <option value="estimated">Estimado</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <label>Faixa de VMD</label>
                     <div class="range-inputs">
                         <input type="number" id="filter-vmd-min" placeholder="Min" value="0">
-                        <span>—</span>
-                        <input type="number" id="filter-vmd-max" placeholder="Max" value="50000">
+                        <span>&mdash;</span>
+                        <input type="number" id="filter-vmd-max" placeholder="Max" value="999999">
                     </div>
                 </div>
                 <div class="filter-group">
                     <label>Regional</label>
-                    <select id="filter-regional">
-                        <option value="all">Todas</option>
-                    </select>
+                    <select id="filter-regional"><option value="all">Todas</option></select>
+                </div>
+                <div class="filter-group">
+                    <label>Classe</label>
+                    <select id="filter-classe"><option value="all">Todas</option></select>
                 </div>
                 <button class="btn-apply" id="btn-apply-filter">Aplicar Filtros</button>
-            </div>
-
-            <!-- Analysis Panel -->
-            <div class="tab-panel" id="panel-analysis">
-                <h3>Distribuição do VMD</h3>
-                <canvas id="chart-vmd-dist" height="200"></canvas>
-
-                <h3>VMD por Regional</h3>
-                <canvas id="chart-regional" height="250"></canvas>
-
-                <h3>Composição Veicular</h3>
-                <canvas id="chart-vehicle" height="200"></canvas>
-            </div>
-
-            <!-- Models Panel -->
-            <div class="tab-panel" id="panel-models">
-                <h3>Comparação de Modelos</h3>
-                <canvas id="chart-models-r2" height="200"></canvas>
-
-                <h3>RMSE por Modelo</h3>
-                <canvas id="chart-models-rmse" height="200"></canvas>
-
-                <h3>Importância das Features</h3>
-                <canvas id="chart-features" height="300"></canvas>
-
-                <div id="model-details" class="model-info-card">
-                    <h4>Melhor Modelo</h4>
-                    <p id="best-model-name">--</p>
-                    <div class="metric-grid">
-                        <div class="metric">
-                            <span class="metric-value" id="best-r2">--</span>
-                            <span class="metric-label">R²</span>
-                        </div>
-                        <div class="metric">
-                            <span class="metric-value" id="best-rmse">--</span>
-                            <span class="metric-label">RMSE</span>
-                        </div>
-                        <div class="metric">
-                            <span class="metric-value" id="best-mae">--</span>
-                            <span class="metric-label">MAE</span>
-                        </div>
-                        <div class="metric">
-                            <span class="metric-value" id="best-mape">--</span>
-                            <span class="metric-label">MAPE %</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Search Panel -->
-            <div class="tab-panel" id="panel-search">
                 <h3>Buscar Segmento</h3>
                 <div class="search-box">
                     <span class="material-icons-outlined">search</span>
                     <input type="text" id="search-input" placeholder="SRE, GO ou Regional...">
                 </div>
                 <div id="search-results" class="search-results"></div>
+                <h3>Distribuição VMD</h3>
+                <canvas id="chart-resultado-dist" height="180"></canvas>
+                <h3>VMD por Regional</h3>
+                <canvas id="chart-regional" height="250"></canvas>
             </div>
         </aside>
 
-        <!-- Map Container -->
+        <!-- Map -->
         <div id="map-container">
             <div id="map"></div>
-            <!-- Legend -->
             <div id="legend">
-                <h4>VMD (veíc/dia)</h4>
+                <h4 id="legend-title">Classe da Rodovia</h4>
                 <div class="legend-items" id="legend-items"></div>
             </div>
         </div>
     </div>
 
-    <!-- Detail Panel (slide-up on segment click) -->
-    <div id="detail-panel" class="hidden">
-        <button id="close-detail" class="close-btn">
-            <span class="material-icons-outlined">close</span>
-        </button>
-        <div id="detail-content"></div>
-    </div>
-
-    <!-- Loading overlay -->
+    <!-- Loading -->
     <div id="loading">
         <div class="spinner"></div>
         <p>Carregando dados...</p>
@@ -200,8 +188,8 @@
 
     <script src="js/legend.js"></script>
     <script src="js/charts.js"></script>
-    <script src="js/sidebar.js"></script>
     <script src="js/map.js"></script>
+    <script src="js/sidebar.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
