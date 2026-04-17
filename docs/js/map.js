@@ -5,12 +5,13 @@ var map;
 var currentLayers = [];
 
 function initMap() {
-    map = L.map('map', { center: [-15.5, -49.5], zoom: 7, zoomControl: false, preferCanvas: true });
+    map = L.map('map', { center: [-15.5, -49.5], zoom: 7, zoomControl: false });
     L.control.zoom({ position: 'topright' }).addTo(map);
     L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; CARTO', subdomains: 'abcd', maxZoom: 19
     }).addTo(map);
+    console.log('[Map] Initialized, size:', map.getSize());
     return map;
 }
 
@@ -57,17 +58,23 @@ function _popDetail(label, value) {
 
 function showRedeView(segments) {
     clearLayers();
-    var layer = L.geoJSON(segments, {
-        style: function(f) {
-            return { color: getClassColor(f.properties.classe), weight: 2.5, opacity: 0.8, lineCap: 'round' };
-        },
-        onEachFeature: function(f, l) {
-            l.bindPopup(createPopup(f.properties), { maxWidth: 300 });
-            l.on('mouseover', function() { this.setStyle({ weight: 5, opacity: 1 }); this.bringToFront(); });
-            l.on('mouseout', function() { layer.resetStyle(this); });
-        }
-    }).addTo(map);
-    currentLayers.push(layer);
+    console.log('[Map] showRedeView: adding', segments.features.length, 'features');
+    try {
+        var layer = L.geoJSON(segments, {
+            style: function(f) {
+                return { color: getClassColor(f.properties.classe), weight: 2.5, opacity: 0.8, lineCap: 'round' };
+            },
+            onEachFeature: function(f, l) {
+                l.bindPopup(createPopup(f.properties), { maxWidth: 300 });
+                l.on('mouseover', function() { this.setStyle({ weight: 5, opacity: 1 }); this.bringToFront(); });
+                l.on('mouseout', function() { layer.resetStyle(this); });
+            }
+        }).addTo(map);
+        currentLayers.push(layer);
+        console.log('[Map] showRedeView: layer added, bounds:', layer.getBounds().toBBoxString());
+    } catch(e) {
+        console.error('[Map] showRedeView error:', e);
+    }
     renderLegend('classe');
 }
 

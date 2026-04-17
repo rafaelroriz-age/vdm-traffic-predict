@@ -82,14 +82,19 @@
         // Populate filters
         populateFilters(segments);
 
-        // Show initial view (Tab 1: Rede)
-        showRedeView(segments);
-        fitToSegments(segments);
-
-        // Hide loading
+        // Hide loading first so map container gets proper dimensions
         console.log('[App] Ready!');
         loading.classList.add('hidden');
-        setTimeout(function() { loading.style.display = 'none'; }, 300);
+        setTimeout(function() {
+            loading.style.display = 'none';
+            // Ensure map knows its proper size after loading overlay is removed
+            map.invalidateSize();
+            console.log('[Map] After invalidateSize, size:', map.getSize());
+            // Show initial view (Tab 1: Rede)
+            showRedeView(segments);
+            fitToSegments(segments);
+            console.log('[Map] Layers on map:', currentLayers.length);
+        }, 100);
 
     } catch (err) {
         showError('Erro ao carregar dados: ' + err.message);
